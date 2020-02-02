@@ -10,7 +10,7 @@ Linux 🐧 only for now.
 
 Run the `vpnflag` binary.
 
-You can also use [script/install-service] to create and start vpnflag via systemd as a user. This requires the `vpnflag` binary to be copied to `/usr/local/bin` first.
+You can also use [script/install-service](/script/install-service) to create and start vpnflag via systemd as a user. This requires the `vpnflag` binary to be copied to `/usr/local/bin` first.
 
 **Icon legend**
 
