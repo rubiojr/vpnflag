@@ -1,11 +1,14 @@
+//go:generate statik -src=ipdb
 package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
 	"os"
+	"path"
 	"time"
 
 	"github.com/getlantern/systray"
@@ -13,7 +16,13 @@ import (
 	emoji "github.com/jayco/go-emoji-flag"
 	"github.com/oschwald/geoip2-golang"
 	"github.com/rdegges/go-ipify"
+
+	"github.com/rakyll/statik/fs"
+	_ "github.com/rubiojr/vpnflag/statik" // TODO: Replace with the absolute import path
 )
+
+var configDir, dbPath string
+var dbOpen = false
 
 func main() {
 	quit := systray.AddMenuItem("Quit", "Quit the whole app")
@@ -22,12 +31,44 @@ func main() {
 		systray.Quit()
 	}()
 
+	setupConfig()
+	dbPath = path.Join(configDir, "ipdb")
 	systray.Run(do, onExit)
+}
+
+func setupConfig() {
+	cdir, err := os.UserConfigDir()
+	if err != nil {
+		panic(err)
+	}
+	configDir = path.Join(cdir, "vpnflag")
+	_, err = os.Stat(configDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			os.Mkdir(configDir, 0755)
+		} else {
+			log.Fatalf("Error creating config dir: %v", err)
+		}
+	}
+
+}
+
+func dbExists() bool {
+	fi, err := os.Stat(dbPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false
+		}
+		panic(err)
+	}
+	if fi.IsDir() {
+		log.Fatalf("DB cache %s found but not a regular file.", dbPath)
+	}
+	return true
 }
 
 func do() {
 	for {
-
 		c2 := make(chan string, 1)
 		go func() {
 			ip, err := ipify.GetIp()
@@ -40,7 +81,7 @@ func do() {
 		select {
 		case res := <-c2:
 			systray.SetTitle(res)
-		case <-time.After(2 * time.Second):
+		case <-time.After(5 * time.Second):
 			fmt.Println("Getting the IP timed out.")
 			systray.SetTitle("💀")
 		}
@@ -70,9 +111,34 @@ func countryFromIP(ip string) string {
 
 // ip2location.com provider
 func ip2Loc(ip string) string {
-	ip2location.Open("ipdb/IP2LOCATION-LITE-DB1.BIN")
-	defer ip2location.Close()
-	results := ip2location.Get_all(ip)
+	if !dbExists() {
+		statikFS, err := fs.New()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// Access individual files by their paths.
+		r, err := statikFS.Open("/IP2LOCATION-LITE-DB1.BIN")
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer r.Close()
+		contents, err := ioutil.ReadAll(r)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		err = ioutil.WriteFile(dbPath, contents, 0644)
+		if err != nil {
+			log.Fatal("Error writing IP database cache.")
+		}
+	}
+	if !dbOpen {
+		ip2location.Open(dbPath)
+	} else {
+		dbOpen = true
+	}
+	results := ip2location.Get_country_short(ip)
 	return results.Country_short
 }
 
