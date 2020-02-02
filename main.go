@@ -93,7 +93,8 @@ func pingTime(url string) string {
 	time_start := time.Now()
 	resp, err := http.Get(url)
 	if err != nil {
-		panic(err)
+		log.Printf("Error testing network speed: %v", err)
+		return "🔴"
 	}
 	defer resp.Body.Close()
 
