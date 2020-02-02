@@ -10,7 +10,7 @@ Linux 🐧 only for now.
 
 Run the `vpnflag` binary.
 
-Icon legend:
+**Icon legend**
 
 💀 Network unreachable.
 
