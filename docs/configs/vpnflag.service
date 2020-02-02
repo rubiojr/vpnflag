@@ -1,0 +1,14 @@
+[Unit]
+Description=VPNFlag - A little tool to display VPN country exit flag and "network speed" 
+
+[Service]
+ExecStart=/usr/local/bin/vpnflag
+Restart=on-failure
+
+# Hardening
+SystemCallArchitectures=native
+MemoryDenyWriteExecute=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target

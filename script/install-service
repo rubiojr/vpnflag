@@ -1,0 +1,12 @@
+#!/bin/bash
+set -e
+
+mkdir -p ~/.config/systemd/user/
+cp docs/configs/vpnflag.service ~/.config/systemd/user/
+
+systemctl --user enable vpnflag
+if [ -f /usr/local/bin/vpnflag ]; then
+  systemctl --user start vpnflag
+else
+ echo "vpnflag binary not found in /usr/local/bin" >&2
+fi
