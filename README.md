@@ -6,6 +6,18 @@ Linux 🐧 only for now.
 
 ![/images/vpnflag.gif](images/vpnflag.gif)
 
+## Usage
+
+Run the `vpnflag` binary.
+
+Icon legend:
+
+💀 Network unreachable.
+
+🇪🇸 The country flag indicates the exit point, i.e. your "public" IP address.
+
+🔴 Network speed test issues.
+
 ## Building/installing
 
 VPNFlag relies on https://github.com/getlantern/systray so some dependencies must be satisfied first. See their repository for instructions.
