@@ -17,18 +17,30 @@ import (
 	"github.com/oschwald/geoip2-golang"
 	"github.com/rdegges/go-ipify"
 
+	"github.com/atotto/clipboard"
 	"github.com/rakyll/statik/fs"
 	_ "github.com/rubiojr/vpnflag/statik" // TODO: Replace with the absolute import path
 )
 
 var configDir, dbPath string
 var dbOpen = false
+var ipMenu *systray.MenuItem
+var currentIP string
 
 func main() {
 	quit := systray.AddMenuItem("Quit", "Quit the whole app")
+	ipMenu = systray.AddMenuItem("Public IP", "Public IP address")
 	go func() {
 		<-quit.ClickedCh
 		systray.Quit()
+	}()
+
+	go func() {
+		<-ipMenu.ClickedCh
+		err := clipboard.WriteAll(currentIP)
+		if err != nil {
+			fmt.Printf("Error copying IP to clipboard: %s", err)
+		}
 	}()
 
 	setupConfig()
@@ -71,10 +83,11 @@ func do() {
 	for {
 		c2 := make(chan string, 1)
 		go func() {
-			ip, err := ipify.GetIp()
+			currentIP, err := ipify.GetIp()
 			if err == nil {
+				ipMenu.SetTitle("Public IP: " + currentIP)
 				gh := pingTime("https://api.github.com/zen")
-				ccode := countryFromIP(ip)
+				ccode := countryFromIP(currentIP)
 				c2 <- fmt.Sprintf("%s %sms", emoji.GetFlag(ccode), gh)
 			}
 		}()

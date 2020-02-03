@@ -4,6 +4,7 @@ Description=VPNFlag - A little tool to display VPN country exit flag and "networ
 [Service]
 ExecStart=/usr/local/bin/vpnflag
 Restart=on-failure
+Environment=PATH=/usr/bin
 
 # Hardening
 SystemCallArchitectures=native

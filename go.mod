@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	bazil.org/fuse v0.0.0-20200117225306-7b5117fecadc
+	github.com/atotto/clipboard v0.1.2
 	github.com/getlantern/systray v0.0.0-20200109124156-9abdfb6448b3
 	github.com/ip2location/ip2location-go v8.2.0+incompatible
 	github.com/jayco/go-emoji-flag v0.0.0-20190810054606-01604da018da
