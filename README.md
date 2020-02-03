@@ -22,6 +22,8 @@ You can also use [script/install-service](/script/install-service) to create and
 
 ## Building/installing
 
+Binaries are available in https://github.com/rubiojr/vpnflag/releases.
+
 VPNFlag relies on https://github.com/getlantern/systray so some dependencies must be satisfied first. See their repository for instructions.
 
 Run `go build` after satisfying deps.
