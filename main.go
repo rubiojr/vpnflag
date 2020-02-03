@@ -28,8 +28,8 @@ var ipMenu *systray.MenuItem
 var currentIP string
 
 func main() {
-	quit := systray.AddMenuItem("Quit", "Quit the whole app")
 	ipMenu = systray.AddMenuItem("Public IP", "Public IP address")
+	quit := systray.AddMenuItem("Quit", "Quit the whole app")
 	go func() {
 		<-quit.ClickedCh
 		systray.Quit()
