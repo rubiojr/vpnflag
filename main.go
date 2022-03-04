@@ -1,4 +1,3 @@
-//go:generate statik -src=ipdb
 package main
 
 import (
@@ -17,10 +16,13 @@ import (
 	emoji "github.com/jayco/go-emoji-flag"
 	"github.com/oschwald/geoip2-golang"
 
+	_ "embed"
+
 	"github.com/atotto/clipboard"
-	"github.com/rakyll/statik/fs"
-	_ "github.com/rubiojr/vpnflag/statik" // TODO: Replace with the absolute import path
 )
+
+//go:embed ipdb/IP2LOCATION-LITE-DB1.BIN
+var db []byte
 
 var configDir, dbPath string
 var dbOpen = false
@@ -129,33 +131,19 @@ func countryFromIP(ip string) string {
 // ip2location.com provider
 func ip2Loc(ip string) string {
 	if !dbExists() {
-		statikFS, err := fs.New()
+		err := ioutil.WriteFile(dbPath, db, 0644)
 		if err != nil {
-			log.Fatal(err)
-		}
-
-		// Access individual files by their paths.
-		r, err := statikFS.Open("/IP2LOCATION-LITE-DB1.BIN")
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer r.Close()
-		contents, err := ioutil.ReadAll(r)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		err = ioutil.WriteFile(dbPath, contents, 0644)
-		if err != nil {
-			log.Fatal("Error writing IP database cache.")
+			panic(err)
 		}
 	}
+
 	if !dbOpen {
 		ip2location.Open(dbPath)
 	} else {
 		dbOpen = true
 	}
 	results := ip2location.Get_country_short(ip)
+
 	return results.Country_short
 }
 
