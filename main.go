@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/getlantern/systray"
-	"github.com/ip2location/ip2location-go"
+	"github.com/ip2location/ip2location-go/v9"
 	emoji "github.com/jayco/go-emoji-flag"
 	"github.com/oschwald/geoip2-golang"
 
