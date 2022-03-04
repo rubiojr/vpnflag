@@ -9,13 +9,13 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/getlantern/systray"
 	"github.com/ip2location/ip2location-go"
 	emoji "github.com/jayco/go-emoji-flag"
 	"github.com/oschwald/geoip2-golang"
-	"github.com/rdegges/go-ipify"
 
 	"github.com/atotto/clipboard"
 	"github.com/rakyll/statik/fs"
@@ -26,6 +26,9 @@ var configDir, dbPath string
 var dbOpen = false
 var ipMenu *systray.MenuItem
 var currentIP string
+
+const ipURL = "https://am.i.mullvad.net/ip"
+const pingMeasureURL = "https://api.github.com/zen"
 
 func main() {
 	ipMenu = systray.AddMenuItem("Public IP", "Public IP address")
@@ -83,10 +86,10 @@ func do() {
 	for {
 		c2 := make(chan string, 1)
 		go func() {
-			currentIP, err := ipify.GetIp()
+			currentIP, err := getIP()
 			if err == nil {
 				ipMenu.SetTitle("Public IP: " + currentIP)
-				gh := pingTime("https://api.github.com/zen")
+				gh := pingTime(pingMeasureURL)
 				ccode := countryFromIP(currentIP)
 				c2 <- fmt.Sprintf("%s %sms", emoji.GetFlag(ccode), gh)
 			}
@@ -94,7 +97,7 @@ func do() {
 		select {
 		case res := <-c2:
 			systray.SetTitle(res)
-		case <-time.After(5 * time.Second):
+		case <-time.After(10 * time.Second):
 			fmt.Println("Getting the IP timed out.")
 			systray.SetTitle("💀")
 		}
@@ -169,4 +172,17 @@ func maxmindGeoIP(ipstr string) string {
 		log.Fatal(err)
 	}
 	return record.Country.IsoCode
+}
+
+func getIP() (string, error) {
+	resp, err := http.Get(ipURL)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	ip, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(ip)), nil
 }

@@ -1,0 +1,3 @@
+#!/bin/sh
+# webkit2gtk3-devel.x86_64 libappindicator-gtk3-devel.x86_64
+go build -tags legacy_appindicator 
