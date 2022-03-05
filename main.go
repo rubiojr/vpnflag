@@ -123,7 +123,10 @@ func do() {
 
 func pingTime(url string) (string, error) {
 	time_start := time.Now()
-	resp, err := http.Get(url)
+	client := http.Client{
+		Timeout: 5 * time.Second,
+	}
+	resp, err := client.Get(url)
 	if err != nil {
 		return "", err
 	}
@@ -145,11 +148,15 @@ func ip2Loc(ip string) string {
 }
 
 func getIP() (string, error) {
-	resp, err := http.Get(ipURL)
+	client := http.Client{
+		Timeout: 5 * time.Second,
+	}
+	resp, err := client.Get(ipURL)
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
+
 	ip, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
