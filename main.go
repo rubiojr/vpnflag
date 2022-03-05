@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"path"
@@ -14,7 +13,6 @@ import (
 	"github.com/getlantern/systray"
 	"github.com/ip2location/ip2location-go/v9"
 	emoji "github.com/jayco/go-emoji-flag"
-	"github.com/oschwald/geoip2-golang"
 
 	_ "embed"
 
@@ -28,6 +26,8 @@ var configDir, dbPath string
 var dbOpen = false
 var ipMenu *systray.MenuItem
 var currentIP string
+
+const pingFreq = 30
 
 const ipURL = "https://am.i.mullvad.net/ip"
 const pingMeasureURL = "https://api.github.com/zen"
@@ -44,29 +44,40 @@ func main() {
 		<-ipMenu.ClickedCh
 		err := clipboard.WriteAll(currentIP)
 		if err != nil {
-			fmt.Printf("Error copying IP to clipboard: %s", err)
+			fmt.Printf("failed copying IP to clipboard: %s", err)
 		}
 	}()
 
 	setupConfig()
-	dbPath = path.Join(configDir, "ipdb")
 	systray.Run(do, onExit)
 }
 
 func setupConfig() {
 	cdir, err := os.UserConfigDir()
 	if err != nil {
-		panic(err)
+		log.Fatalf("error retrieving config dir: %v", err)
 	}
+
 	configDir = path.Join(cdir, "vpnflag")
+	dbPath = path.Join(configDir, "ipdb")
+
 	_, err = os.Stat(configDir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			os.Mkdir(configDir, 0755)
 		} else {
-			log.Fatalf("Error creating config dir: %v", err)
+			log.Fatalf("error creating config dir: %v", err)
 		}
 	}
+
+	if !dbExists() {
+		err := ioutil.WriteFile(dbPath, db, 0644)
+		if err != nil {
+			log.Fatalf("error writting ipdb: %v", err)
+		}
+	}
+
+	ip2location.Open(dbPath)
 
 }
 
@@ -76,90 +87,61 @@ func dbExists() bool {
 		if os.IsNotExist(err) {
 			return false
 		}
-		panic(err)
+		log.Fatalf("%s stat failed: %v", dbPath, err)
 	}
+
 	if fi.IsDir() {
-		log.Fatalf("DB cache %s found but not a regular file.", dbPath)
+		log.Printf("DB cache %s found but not a regular file\n", dbPath)
+		err := os.Remove(dbPath)
+		if err != nil {
+			log.Fatalf("removing %s failed", dbPath)
+		}
 	}
+
 	return true
 }
 
 func do() {
 	for {
-		c2 := make(chan string, 1)
-		go func() {
-			currentIP, err := getIP()
-			if err == nil {
-				ipMenu.SetTitle("Public IP: " + currentIP)
-				gh := pingTime(pingMeasureURL)
-				ccode := countryFromIP(currentIP)
-				c2 <- fmt.Sprintf("%s %sms", emoji.GetFlag(ccode), gh)
+		currentIP, err := getIP()
+		if err == nil {
+			ipMenu.SetTitle("Public IP: " + currentIP)
+			t, err := pingTime(pingMeasureURL)
+			if err != nil {
+				log.Printf("failed testing network speed: %v", err)
+				systray.SetTitle("🔴")
 			}
-		}()
-		select {
-		case res := <-c2:
+			ccode := ip2Loc(currentIP)
+			res := fmt.Sprintf("%s %sms", emoji.GetFlag(ccode), t)
 			systray.SetTitle(res)
-		case <-time.After(10 * time.Second):
-			fmt.Println("Getting the IP timed out.")
+		} else {
 			systray.SetTitle("💀")
 		}
-		time.Sleep(5 * time.Second)
+		time.Sleep(pingFreq * time.Second)
 	}
 }
 
-func pingTime(url string) string {
+func pingTime(url string) (string, error) {
 	time_start := time.Now()
 	resp, err := http.Get(url)
 	if err != nil {
-		log.Printf("Error testing network speed: %v", err)
-		return "🔴"
+		return "", err
 	}
 	defer resp.Body.Close()
 
 	duration := time.Since(time_start)
-	return fmt.Sprintf("%d", duration.Milliseconds())
+	return fmt.Sprintf("%d", duration.Milliseconds()), nil
 }
 
 func onExit() {
 	os.Exit(0)
 }
 
-func countryFromIP(ip string) string {
-	return ip2Loc(ip)
-}
-
 // ip2location.com provider
 func ip2Loc(ip string) string {
-	if !dbExists() {
-		err := ioutil.WriteFile(dbPath, db, 0644)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	if !dbOpen {
-		ip2location.Open(dbPath)
-	} else {
-		dbOpen = true
-	}
 	results := ip2location.Get_country_short(ip)
 
 	return results.Country_short
-}
-
-// Maxmind GeoIP provider, not currently used
-func maxmindGeoIP(ipstr string) string {
-	db, err := geoip2.Open("GeoLite2-City.mmdb")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
-	ip := net.ParseIP(ipstr)
-	record, err := db.City(ip)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return record.Country.IsoCode
 }
 
 func getIP() (string, error) {
